@@ -418,6 +418,13 @@ public:  // members
     std::vector<std::string> subnames;
     std::vector<std::string> shadowSubs;
 
+    /**
+     * @brief ownerName: full name ("Document#Object") of the object this engine
+     * positions, used to say which object a warning is about. Set by setUp()
+     * from the container of the references property; empty if unknown.
+     */
+    std::string ownerName;
+
     eMapMode mapMode = mmDeactivated;
     bool mapReverse = false;
     double attachParameter = 0.0;
@@ -436,6 +443,9 @@ public:  // members
                                                   // which modes support what selection
 
 protected:
+    /// "<ownerName>: " if the owner is known, otherwise an empty string
+    std::string ownerPrefix() const;
+
     refTypeString cat(eRefType rt1)
     {
         refTypeString ret;

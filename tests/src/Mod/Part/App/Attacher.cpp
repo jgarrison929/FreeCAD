@@ -6,6 +6,10 @@
 #include <src/App/InitApplication.h>
 #include <App/Document.h>
 #include <Mod/Part/App/Attacher.h>
+#include <Base/Console.h>
+
+#include <string>
+#include <vector>
 
 using namespace Part;
 using namespace Attacher;
@@ -363,4 +367,52 @@ TEST_F(AttacherTest, TestAllModesBoundaries)
     EXPECT_TRUE(
         boxesMatch(_boxes[1]->Shape.getBoundingBox(), Base::BoundBox3d(0.5, 1, 1.5, 3.5, 2, 3.5))
     );
+}
+
+namespace
+{
+class WarningCollector final: public Base::ILogger
+{
+public:
+    void sendLog(
+        const std::string& /*notifiername*/,
+        const std::string& msg,
+        Base::LogStyle level,
+        Base::IntendedRecipient /*recipient*/,
+        Base::ContentType /*content*/
+    ) override
+    {
+        if (level == Base::LogStyle::Warning) {
+            warnings.push_back(msg);
+        }
+    }
+    const char* name() override
+    {
+        return "AttacherTestWarningCollector";
+    }
+    std::vector<std::string> warnings;
+};
+}  // namespace
+
+TEST_F(AttacherTest, TestWarningNamesAttachedObject)
+{
+    // Arrange: a square prism has an axis of symmetry, so InertialCS can only
+    // define one of its three axes and warns about it.
+    _boxes[0]->Length.setValue(1.0);
+    _boxes[0]->Width.setValue(1.0);
+    _boxes[0]->Height.setValue(3.0);
+    _boxes[0]->recomputeFeature();
+    WarningCollector collector;
+    Base::Console().attachObserver(&collector);
+
+    // Act
+    _boxes[1]->MapMode.setValue(mmInertialCS);
+    _boxes[1]->recomputeFeature();
+    Base::Console().detachObserver(&collector);
+
+    // Assert: the warning says which object it is about
+    ASSERT_FALSE(collector.warnings.empty());
+    const std::string expectedPrefix = _boxes[1]->getFullName() + ": ";
+    EXPECT_EQ(collector.warnings.front().rfind(expectedPrefix, 0), 0U)
+        << "warning was: " << collector.warnings.front();
 }
